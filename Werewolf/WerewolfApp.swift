@@ -5,13 +5,17 @@
 //  Created by Trịnh Kiết Tường on 11/12/24.
 //
 
-import SwiftUI
+import AVFoundation
 
+import SwiftUI
+import SwiftData
 @main
 struct WerewolfApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainView()
+                .ignoresSafeArea()
         }
+        .modelContainer(for: [Player.self, Role.self])
     }
 }
