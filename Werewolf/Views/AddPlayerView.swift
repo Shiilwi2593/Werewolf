@@ -8,9 +8,9 @@ import SwiftUI
 
 struct AddPlayerView: View {
     @State private var playerName: String = ""
-    @State private var selectedImage: String = "person1" // Default image
+    @State private var selectedImage: String = "person1" 
 
-    @Environment(\.modelContext) private var modelContext // Assuming SwiftData is set up properly
+    @Environment(\.modelContext) private var modelContext
 
     private let availableImages = ["person1", "person2", "person3", "person4", "person5", "person6", "person7","person8", "person9", "person10", "person11", "person12", "person13","person14", "person15", "person16", "person17", "person18", "person19","person20", "person21", "person22", "person23", "person24", "person25", "person26","person27","person28","person29"]
 

@@ -96,6 +96,7 @@ struct AdjustRoleView: View {
         .toolbar{
             ToolbarItem(placement: .topBarTrailing) {
                 if isReady{
+                
                     NavigationLink(destination: GameView(players: players, roleAssignments: assignRoles())) {
                         Image(systemName: "arrow.forward.square.fill")
                             .resizable()

@@ -21,12 +21,13 @@ struct RoleLibrary: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 15) {
-                ForEach(roles, id: \.id) { role in
-                    RoleRow(role: role)
+                ForEach(roles, id: \ .id) { role in
+                    RoleCard(role: role)
                 }
             }
             .padding()
         }
+        .background(Color(UIColor.systemBackground)) // Adapts to light/dark mode
         .navigationTitle("Thư viện vai trò")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -41,15 +42,15 @@ struct RoleLibrary: View {
     }
 }
 
-// MARK: - RoleRow Subview
+// MARK: - RoleCard Subview
 
-struct RoleRow: View {
+struct RoleCard: View {
     let role: Role
 
     var body: some View {
-        HStack {
+        HStack(spacing: 15) {
             Circle()
-                .foregroundStyle(.gray)
+                .foregroundStyle(.gray.opacity(0.3))
                 .frame(width: 80, height: 80)
                 .overlay {
                     Image(role.image)
@@ -58,32 +59,35 @@ struct RoleRow: View {
                         .frame(width: 75, height: 75)
                         .clipShape(Circle())
                 }
+                .shadow(color: .black.opacity(0.2), radius: 3, x: 2, y: 2)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(role.roleName)
                     .font(.headline)
                     .fontWeight(.bold)
-                    .foregroundStyle(.primary) // Adapts to dark mode
+                    .foregroundStyle(.primary)
 
                 Text(role.roleDes)
                     .font(.subheadline)
-                    .foregroundColor(.secondary) // Adapts to dark mode
+                    .foregroundColor(.secondary)
                     .lineLimit(2)
             }
             Spacer()
 
             Text(role.roleTypeDescription)
-                .foregroundStyle(.primary) // Adapts to dark mode
                 .font(.caption)
-                .padding(5)
-                .background(role.roleTypeColor.opacity(0.2))
-                .cornerRadius(5)
+                .fontWeight(.semibold)
+                .foregroundColor(role.roleTypeColor)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(role.roleTypeColor.opacity(0.15))
+                .clipShape(Capsule())
         }
         .padding()
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(.secondary)
-                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 3)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(UIColor.secondarySystemBackground)) // Adaptable background
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 4)
         )
     }
 }
@@ -111,5 +115,7 @@ extension Role {
 // MARK: - Preview
 
 #Preview {
-    RoleLibrary()
+    NavigationView {
+        RoleLibrary()
+    }
 }
