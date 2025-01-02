@@ -17,11 +17,17 @@ class Player: Identifiable, Comparable{
     var id: String
     var name: String
     var image: String
+    var gameWin: Int = 0
     
     init(name: String, image: String) {
         self.id = UUID().uuidString
         self.name = name
         self.image = image
+        self.gameWin = 0
+    }
+    
+    func addWin(){
+        self.gameWin += 1
     }
 }
 

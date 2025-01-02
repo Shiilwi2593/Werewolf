@@ -11,6 +11,7 @@ import Combine
 struct GameView: View {
     var players: [Player]
     var roleAssignments: [Player: Role]
+    @Environment(\.dismiss) private var dismiss
     
     @State private var selectedPlayerIndex: Int = 0
     @State private var showRoleSheet: Bool = false
@@ -19,6 +20,9 @@ struct GameView: View {
     @State private var timeElapsed: Int = 0
     @State private var timer: Timer.TimerPublisher?
     @State private var timerSubscription: Cancellable?
+    @State private var showWinnerSelection: Bool = false
+    @State private var showWinnerAnnouncement: Bool = false
+    @State private var winningPlayers: [Player] = []
     
     var dayColors: [Color] = [
         Color.blue.opacity(0.5),
@@ -44,6 +48,7 @@ struct GameView: View {
                 .animation(.easeInOut(duration: 0.5), value: isNightMode)
                 
                 VStack(spacing: 20) {
+                    // Day/Night Toggle
                     HStack {
                         Image(systemName: "sun.max.fill")
                             .foregroundColor(isNightMode ? .gray : .yellow)
@@ -61,6 +66,7 @@ struct GameView: View {
                             .fill(Color.black.opacity(0.1))
                     )
                     
+                    // Timer
                     ZStack {
                         Circle()
                             .stroke(isNightMode ? Color.teal.opacity(0.3) : Color.yellow.opacity(0.3), lineWidth: 15)
@@ -82,41 +88,24 @@ struct GameView: View {
                     }
                     .padding()
                     
+                    // Player Display (Grid or Carousel)
                     if isGridView {
-                        ScrollView{
+                        ScrollView {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 20) {
                                 ForEach(players.indices, id: \.self) { index in
-                                    VStack {
-                                        VStack {
-                                            Circle()
-                                                .frame(width: 100, height: 100)
-                                                .foregroundColor(.gray)
-                                                .overlay(
-                                                    Image(players[index].image)
-                                                        .resizable()
-                                                        .scaledToFill()
-                                                        .frame(width: 90, height: 90)
-                                                        .clipShape(Circle())
-                                                )
-                                                .shadow(radius: 5)
-
-                                            Text(players[index].name)
-                                                .font(.subheadline)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.white)
-                                                .padding(.top, 5)
-                                        }
-                                        .onTapGesture {
+                                    PlayerGridItem(
+                                        player: players[index],
+                                        isSelected: index == selectedPlayerIndex,
+                                        onTap: {
                                             selectedPlayerIndex = index
                                             showRoleSheet = true
                                         }
-                                    }
+                                    )
                                 }
                             }
                             .padding(.horizontal)
                         }
                         .frame(height: 300)
-                       
                     } else {
                         HStack {
                             Button(action: {
@@ -130,20 +119,16 @@ struct GameView: View {
                                     .font(.largeTitle)
                                     .foregroundColor(.white)
                             }
-
+                            
                             PlayerCarouselItem(
                                 player: players[selectedPlayerIndex],
                                 isSelected: true,
                                 onTap: {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showRoleSheet = true
-                                    }
+                                    showRoleSheet = true
                                 }
                             )
                             .frame(width: 200, height: 200)
-                            .scaleEffect(1.0)
-                            .transition(.slide)
-
+                            
                             Button(action: {
                                 if selectedPlayerIndex < players.count - 1 {
                                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -159,6 +144,7 @@ struct GameView: View {
                         .padding()
                     }
                     
+                    // Action Buttons
                     HStack(spacing: 20) {
                         ActionButton(
                             title: "Reset Time",
@@ -175,6 +161,14 @@ struct GameView: View {
                                 }
                             }
                         )
+                        
+                        ActionButton(
+                            title: "Finish Game",
+                            backgroundColor: .red,
+                            action: {
+                                showWinnerSelection = true
+                            }
+                        )
                     }
                     .padding()
                 }
@@ -189,13 +183,35 @@ struct GameView: View {
             .sheet(isPresented: $showRoleSheet) {
                 if let role = roleAssignments[players[selectedPlayerIndex]] {
                     RoleDetailSheet(role: role)
-                        .presentationDetents([.medium, .medium])
+                        .presentationDetents([.medium])
                 }
+            }
+            .sheet(isPresented: $showWinnerAnnouncement) {
+                WinnerAnnouncementView(players: winningPlayers) {
+                    dismiss()
+                }
+            }
+            .confirmationDialog(
+                "Select Winner",
+                isPresented: $showWinnerSelection,
+                titleVisibility: .visible
+            ) {
+                Button("Phe dân thắng 👩🏾‍🌾") {
+                    updateWinners(for: .Good)
+                }
+                Button("Phe sói thắng 🐺") {
+                    updateWinners(for: .Bad)
+                }
+                Button("Phe thứ 3 thắng ❓") {
+                    updateWinners(for: .Neutral)
+                }
+                Button("Cancel", role: .cancel) {}
             }
             .navigationBarHidden(true)
         }
     }
     
+    // Timer Functions
     func startTimer() {
         timer = Timer.publish(every: 1, on: .main, in: .common)
         timerSubscription = timer?.autoconnect().sink { _ in
@@ -213,15 +229,109 @@ struct GameView: View {
         return String(format: "%02d:%02d", minutes, seconds)
     }
     
+    // Audio Configuration
     func configureAudio(isNight: Bool) {
         AudioManager.shared.stopSound()
         if isNight {
-            let audios = ["soundtrack1", "soundtrack2", "soundtrack4", "soundtrack5","soundtrack6", "soundtrack7", "soundtrack8", "soundtrack9","soundtrack10", "soundtrack11", "soundtrack12", "soundtrack13"]
+            let audios = ["soundtrack1", "soundtrack2", "soundtrack4", "soundtrack5",
+                         "soundtrack6", "soundtrack7", "soundtrack8", "soundtrack9",
+                         "soundtrack10", "soundtrack11", "soundtrack12", "soundtrack13"]
             let randomAudio = audios.randomElement() ?? "soundtrack1"
             AudioManager.shared.playSound(named: randomAudio)
         } else {
             AudioManager.shared.playSound(named: "daysoundtrack")
         }
+    }
+    
+    // Game Finish Functions
+    private func updateWinners(for winningType: Role.RoleType) {
+        winningPlayers = players.filter { player in
+            if let playerRole = roleAssignments[player] {
+                return playerRole.roleType == winningType
+            }
+            return false
+        }
+        
+        for player in winningPlayers {
+            player.addWin()
+        }
+        
+        showWinnerAnnouncement = true
+    }
+}
+
+// Winner Announcement View
+struct WinnerAnnouncementView: View {
+    let players: [Player]
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("🎉 Những người chiến thắng! 🎉")
+                .font(.title)
+                .fontWeight(.bold)
+            
+            ForEach(players) { player in
+                HStack {
+                    Image(player.image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 50, height: 50)
+                        .clipShape(Circle())
+                    
+                    Text(player.name)
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Text("Wins: \(player.gameWin)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+            }
+            
+            Button("Continue") {
+                onDismiss()
+            }
+            .font(.headline)
+            .padding()
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .clipShape(Capsule())
+            .padding(.top)
+        }
+        .padding()
+    }
+}
+
+// Player Grid Item
+struct PlayerGridItem: View {
+    let player: Player
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        VStack {
+            Circle()
+                .frame(width: 100, height: 100)
+                .foregroundColor(.gray)
+                .overlay(
+                    Image(player.image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 90, height: 90)
+                        .clipShape(Circle())
+                )
+                .shadow(radius: 5)
+            
+            Text(player.name)
+                .font(.subheadline)
+                .fontWeight(.bold)
+                .foregroundColor(.black)
+                .padding(.top, 5)
+        }
+        .onTapGesture(perform: onTap)
     }
 }
 
@@ -321,7 +431,7 @@ struct PlayerCarouselItem: View {
             
             Text(player.name)
                 .font(.headline)
-                .foregroundColor(isSelected ? .white : .secondary)
+                .foregroundColor(.black)
                 .padding(.top, 8)
         }
         .padding()
